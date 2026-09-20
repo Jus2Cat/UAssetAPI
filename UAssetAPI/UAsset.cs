@@ -1130,6 +1130,7 @@ namespace UAssetAPI
 #endif
                 if (read) reader.BaseStream.Seek(Exports[i].SerialOffset, SeekOrigin.Begin);
                 Exports[i] = Exports[i].ConvertToChildExport<RawExport>();
+                ((RawExport)Exports[i]).ParseError = ex.GetType().Name + ": " + ex.Message;
                 if (read) ((RawExport)Exports[i]).Data = reader.ReadBytes((int)Exports[i].SerialSize);
             }
 #pragma warning restore CS0168 // Variable is declared but never used

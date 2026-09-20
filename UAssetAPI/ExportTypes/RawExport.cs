@@ -10,6 +10,12 @@ namespace UAssetAPI.ExportTypes
     public class RawExport : Export
     {
         public byte[] Data;
+        /// <summary>
+        /// Why this export is raw: the message of the exception that stopped parsing it, when parsing was
+        /// attempted and failed (null when the export was raw by request — SkipParsingExports, manual skips).
+        /// A consumer can tell "not decoded" from "chose not to decode" and report the former.
+        /// </summary>
+        public string ParseError;
 
         public RawExport(Export super)
         {
