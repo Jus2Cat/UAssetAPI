@@ -935,6 +935,14 @@ namespace UAssetAPI.CustomVersions
         [Introduced(EngineVersion.VER_UE5_7)]
         LandscapeAdvancedWeightBlending,
 
+        /// <summary>
+        /// FTextHistory_Base serializes a DevNotes string after Namespace/Key/SourceString when the archive
+        /// carries editor data (Engine/Source/Runtime/Core/Private/Internationalization/TextHistory.cpp;
+        /// FortniteMainBranchObjectVersions.inl: AddDevNotesToFText = 260). UE 5.7 packages are at 225.
+        /// </summary>
+        [Introduced(EngineVersion.VER_UE5_8)]
+        AddDevNotesToFText = 260,
+
         [Introduced(EngineVersion.VER_UE4_AUTOMATIC_VERSION_PLUS_ONE)]
         VersionPlusOne,
         [Introduced(EngineVersion.VER_UE4_AUTOMATIC_VERSION)]

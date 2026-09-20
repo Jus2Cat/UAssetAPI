@@ -207,6 +207,12 @@ public class TextPropertyData : PropertyData<FString>
     /// <summary>The source string for this FText. In the Unreal Engine, this is also known as SourceString.</summary>
     [JsonProperty]
     public FString CultureInvariantString = null;
+    /// <summary>
+    /// Translator notes of a Base-history text (UE 5.8+, FFortniteMainBranchObjectVersion.AddDevNotesToFText),
+    /// serialized after SourceString when the package carries editor data. Null when absent.
+    /// </summary>
+    [JsonProperty]
+    public FString DevNotes = null;
 
     // OrderedFormat
     [JsonProperty]
@@ -284,6 +290,9 @@ public class TextPropertyData : PropertyData<FString>
                     Namespace = reader.ReadFString();
                     Value = reader.ReadFString(); // Key
                     CultureInvariantString = reader.ReadFString(); // SourceString
+                    // FTextHistory_Base::Serialize (UE 5.8): DevNotes follow when the archive has editor data
+                    if (reader.Asset.GetCustomVersion<FFortniteMainBranchObjectVersion>() >= FFortniteMainBranchObjectVersion.AddDevNotesToFText && !reader.Asset.IsFilterEditorOnly)
+                        DevNotes = reader.ReadFString();
                     break;
                 case TextHistoryType.StringTableEntry:
                     TableId = reader.ReadFName();
@@ -380,6 +389,8 @@ public class TextPropertyData : PropertyData<FString>
                     writer.Write(Namespace);
                     writer.Write(Value);
                     writer.Write(CultureInvariantString);
+                    if (writer.Asset.GetCustomVersion<FFortniteMainBranchObjectVersion>() >= FFortniteMainBranchObjectVersion.AddDevNotesToFText && !writer.Asset.IsFilterEditorOnly)
+                        writer.Write(DevNotes ?? new FString(""));
                     break;
                 case TextHistoryType.StringTableEntry:
                     writer.Write(TableId);

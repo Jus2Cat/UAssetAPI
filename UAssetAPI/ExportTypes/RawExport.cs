@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using UAssetAPI.UnrealTypes;
 using UAssetAPI.ExportTypes;
@@ -16,6 +17,13 @@ namespace UAssetAPI.ExportTypes
         /// A consumer can tell "not decoded" from "chose not to decode" and report the former.
         /// </summary>
         public string ParseError;
+        /// <summary>
+        /// The tagged properties that were parsed before the failure, as "Name : Type" — so a consumer can
+        /// say where in the export parsing stopped, not only that it did. Null when nothing was parsed.
+        /// </summary>
+        public List<string> ParsedBeforeError;
+        /// <summary>Byte offset of the failure inside this export's serialized data (position - SerialOffset).</summary>
+        public long? ParseErrorOffset;
 
         public RawExport(Export super)
         {

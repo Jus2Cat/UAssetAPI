@@ -1128,9 +1128,21 @@ namespace UAssetAPI
 #if DEBUGVERBOSE
                 Console.WriteLine("\nFailed to parse export " + (i + 1) + ": " + ex.ToString());
 #endif
+                // what was parsed before the failure, and where it stopped: the consumer can then say
+                // "after property X" rather than only "this export"
+                long failedAt = read ? reader.BaseStream.Position - Exports[i].SerialOffset : -1;
+                List<string> parsedBefore = null;
+                if (Exports[i] is NormalExport partial && partial.Data != null && partial.Data.Count > 0)
+                {
+                    parsedBefore = new List<string>();
+                    foreach (var property in partial.Data)
+                        if (property != null) parsedBefore.Add(property.Name.ToString() + " : " + (property.PropertyType?.ToString() ?? "?"));
+                }
                 if (read) reader.BaseStream.Seek(Exports[i].SerialOffset, SeekOrigin.Begin);
                 Exports[i] = Exports[i].ConvertToChildExport<RawExport>();
                 ((RawExport)Exports[i]).ParseError = ex.GetType().Name + ": " + ex.Message;
+                ((RawExport)Exports[i]).ParsedBeforeError = parsedBefore;
+                ((RawExport)Exports[i]).ParseErrorOffset = failedAt >= 0 ? failedAt : null;
                 if (read) ((RawExport)Exports[i]).Data = reader.ReadBytes((int)Exports[i].SerialSize);
             }
 #pragma warning restore CS0168 // Variable is declared but never used
