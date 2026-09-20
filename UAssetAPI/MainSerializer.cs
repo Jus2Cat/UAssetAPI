@@ -493,7 +493,14 @@ namespace UAssetAPI
                 ArrayIndex = reader.ReadInt32();
             }
 
+            // UASSETAPI_TRACE=1: every tagged property as it is about to be read (name, type, offset) — the
+            // trail that ends at the one a reader could not decode
+            if (Environment.GetEnvironmentVariable("UASSETAPI_TRACE") == "1")
+                Console.Error.WriteLine($"[trace] {parentName?.ToString() ?? "-"}.{name} : {type} ({typeName?.ToString() ?? "-"}) @ {startingOffset} len {leng}");
+            long payloadStart = reader.BaseStream.Position;
             PropertyData result = TypeToClass(type, name, ancestry, parentName, parentModulePath, reader.Asset, reader, leng, propertyTagFlags, ArrayIndex, includeHeader, isZero, typeName);
+            if (Environment.GetEnvironmentVariable("UASSETAPI_TRACE") == "1" && leng > 0 && reader.BaseStream.Position - payloadStart != leng && type.Value.Value != "BoolProperty")
+                Console.Error.WriteLine($"[trace] !! {name} : {type} read {reader.BaseStream.Position - payloadStart} of {leng} declared bytes");
             if (structType != null && result is StructPropertyData strucProp) strucProp.StructType = FName.DefineDummy(reader.Asset, structType);
             result.Offset = startingOffset;
             //Debug.WriteLine(type);

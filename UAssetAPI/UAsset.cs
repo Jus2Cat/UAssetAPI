@@ -395,6 +395,11 @@ namespace UAssetAPI
         public Dictionary<string, Tuple<FString, FString>> MapStructTypeOverride = new Dictionary<string, Tuple<FString, FString>>()
         {
             { "ColorDatabase", new Tuple<FString, FString>(null, new FString("LinearColor")) },
+            // UBlueprintGeneratedClass::PropertyGuids and UWidgetBlueprint::WidgetVariableNameToGuidMap are
+            // TMap<FName, FGuid>: before PROPERTY_TAG_COMPLETE_TYPE_NAME (UE 5.4) the tag names no value
+            // struct, and FGuid is 16 native bytes, not a tagged property list
+            { "PropertyGuids", new Tuple<FString, FString>(null, new FString("Guid")) },
+            { "WidgetVariableNameToGuidMap", new Tuple<FString, FString>(null, new FString("Guid")) },
             { "PlayerCharacterIDs", new Tuple<FString, FString>(new FString("Guid"), null) },
             { "m_PerConditionValueToNodeMap", new Tuple<FString, FString>(new FString("Guid"), null) },
             { "BindingIdToReferences", new Tuple<FString, FString>(new FString("Guid"), null) },
@@ -1140,7 +1145,9 @@ namespace UAssetAPI
                 }
                 if (read) reader.BaseStream.Seek(Exports[i].SerialOffset, SeekOrigin.Begin);
                 Exports[i] = Exports[i].ConvertToChildExport<RawExport>();
-                ((RawExport)Exports[i]).ParseError = ex.GetType().Name + ": " + ex.Message;
+                // UASSETAPI_TRACE=1: the stack trace too, for finding where a reader gave up
+                ((RawExport)Exports[i]).ParseError = ex.GetType().Name + ": " + ex.Message
+                    + (Environment.GetEnvironmentVariable("UASSETAPI_TRACE") == "1" ? Environment.NewLine + ex.StackTrace : "");
                 ((RawExport)Exports[i]).ParsedBeforeError = parsedBefore;
                 ((RawExport)Exports[i]).ParseErrorOffset = failedAt >= 0 ? failedAt : null;
                 if (read) ((RawExport)Exports[i]).Data = reader.ReadBytes((int)Exports[i].SerialSize);

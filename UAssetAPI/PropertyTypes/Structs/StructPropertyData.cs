@@ -72,6 +72,14 @@ public class StructPropertyData : PropertyData<List<PropertyData>>
         }
     }
 
+    /// <summary>
+    /// The value as the declared bytes when it is not a tagged property list this library can read
+    /// (a natively serialized struct without a reader here). Null for a struct read normally.
+    /// </summary>
+    [JsonProperty]
+    public byte[] RawValue = null;
+    public bool ShouldSerializeRawValue() => RawValue != null;
+
     public StructPropertyData(FName name) : base(name)
     {
         Value = [];
@@ -173,6 +181,31 @@ public class StructPropertyData : PropertyData<List<PropertyData>>
         {
             ReadOnce(reader, targetEntry.PropertyType, reader.BaseStream.Position, leng1);
         }
+        else if (leng1 > 1 && serializationContext == PropertySerializationContext.Normal)
+        {
+            // A struct this library has no reader for may still be natively serialized by the engine
+            // (FEdGraphPinType, FInstancedStruct, …): read as a tagged property list it misaligns the
+            // stream and every property after it. The tag says how many bytes the value takes, so the
+            // list is tried and, when it does not end exactly there or throws, the value is kept as the
+            // declared bytes (RawValue) — nothing after it is lost, and the caller can decode the bytes.
+            long start = reader.BaseStream.Position;
+            bool ok;
+            try
+            {
+                ReadNTPL(reader);
+                ok = reader.BaseStream.Position - start == leng1;
+            }
+            catch (Exception)
+            {
+                ok = false;
+            }
+            if (!ok)
+            {
+                reader.BaseStream.Seek(start, System.IO.SeekOrigin.Begin);
+                RawValue = reader.ReadBytes((int)leng1);
+                Value = [];
+            }
+        }
         else
         {
             ReadNTPL(reader);
@@ -259,6 +292,13 @@ public class StructPropertyData : PropertyData<List<PropertyData>>
         }
 
         if (Value == null) Value = [];
+
+        // a value kept as its declared bytes goes back as those bytes
+        if (RawValue != null)
+        {
+            writer.Write(RawValue);
+            return RawValue.Length;
+        }
 
         bool hasCustomStructSerialization = DetermineIfSerializeWithCustomStructSerialization(writer.Asset, serializationContext, out RegistryEntry targetEntry);
         if (targetEntry != null && hasCustomStructSerialization) return WriteOnce(writer, serializationContext);

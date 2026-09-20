@@ -92,6 +92,7 @@ public class FFormatArgumentValue
                 Value = isArgumentData && reader.Asset.GetCustomVersion<FUE5ReleaseStreamObjectVersion>() < FUE5ReleaseStreamObjectVersion.TextFormatArgumentData64bitSupport ? reader.ReadInt32() : reader.ReadInt64();
                 break;
             case EFormatArgumentType.UInt:
+            case EFormatArgumentType.Gender: // Text.cpp operator<<: Gender is stored as a UInt
                 Value = reader.ReadUInt64();
                 break;
             case EFormatArgumentType.Double:
@@ -129,6 +130,7 @@ public class FFormatArgumentValue
                 }
                 break;
             case EFormatArgumentType.UInt:
+            case EFormatArgumentType.Gender:
                 writer.Write((ulong)Value);
                 sz += sizeof(ulong);
                 break;
@@ -225,13 +227,32 @@ public class TextPropertyData : PropertyData<FString>
     //Transform
     [JsonProperty]
     public ETransformType TransformType;
-    //AsNumber
+    /// <summary>NamedFormat: the arguments by name (TMap&lt;FString, FFormatArgumentValue&gt; in the engine), in file order.</summary>
+    [JsonProperty]
+    public FFormatArgumentData[] NamedArguments;
+    //AsNumber, AsPercent, AsCurrency
     [JsonProperty]
     FFormatArgumentValue SourceValue;
     [JsonProperty]
     FNumberFormattingOptions FormatOptions;
     [JsonProperty]
     FString TargetCulture;
+    /// <summary>AsCurrency: the ISO currency code (VER_UE4_ADDED_CURRENCY_CODE_TO_FTEXT and later).</summary>
+    [JsonProperty]
+    public FString CurrencyCode;
+    // AsDate, AsTime, AsDateTime (FTextHistory_AsDate / AsTime / AsDateTime::Serialize)
+    /// <summary>The source FDateTime as ticks.</summary>
+    [JsonProperty]
+    public long SourceDateTime;
+    [JsonProperty]
+    public sbyte DateStyle;
+    [JsonProperty]
+    public sbyte TimeStyle;
+    /// <summary>AsDateTime with DateStyle == Custom (5): the custom pattern.</summary>
+    [JsonProperty]
+    public FString CustomPattern;
+    [JsonProperty]
+    public FString TimeZone;
 
     public bool ShouldSerializeTableId()
     {
@@ -326,12 +347,44 @@ public class TextPropertyData : PropertyData<FString>
                     SourceFmt.Read(reader, false, 1, 0, serializationContext);
                     TransformType = (ETransformType)reader.ReadByte();
                     break;
-                case TextHistoryType.AsNumber:
-                    SourceValue = new FFormatArgumentValue(reader);
-                    if (reader.ReadBooleanInt())
+                case TextHistoryType.NamedFormat:
+                    // FTextHistory_NamedFormat::Serialize: the format text, then TMap<FString, FFormatArgumentValue>
+                    SourceFmt = new TextPropertyData(FName.DefineDummy(reader.Asset, "SourceFmt"));
+                    SourceFmt.Read(reader, false, 1, 0, serializationContext);
+                    int NamedCount = reader.ReadInt32();
+                    NamedArguments = new FFormatArgumentData[NamedCount];
+                    for (int i = 0; i < NamedCount; i++)
                     {
-                        FormatOptions = new FNumberFormattingOptions(reader);
+                        NamedArguments[i] = new FFormatArgumentData(reader.ReadFString(), new FFormatArgumentValue(reader));
                     }
+                    break;
+                case TextHistoryType.AsNumber:
+                case TextHistoryType.AsPercent:
+                    ReadFormatNumber(reader);
+                    break;
+                case TextHistoryType.AsCurrency:
+                    // FTextHistory_AsCurrency::Serialize: the currency code precedes the number history
+                    if (reader.Asset.ObjectVersion >= ObjectVersion.VER_UE4_ADDED_CURRENCY_CODE_TO_FTEXT) CurrencyCode = reader.ReadFString();
+                    ReadFormatNumber(reader);
+                    break;
+                case TextHistoryType.AsDate:
+                    SourceDateTime = reader.ReadInt64();
+                    DateStyle = reader.ReadSByte();
+                    if (reader.Asset.ObjectVersion >= ObjectVersion.VER_UE4_FTEXT_HISTORY_DATE_TIMEZONE) TimeZone = reader.ReadFString();
+                    TargetCulture = reader.ReadFString();
+                    break;
+                case TextHistoryType.AsTime:
+                    SourceDateTime = reader.ReadInt64();
+                    TimeStyle = reader.ReadSByte();
+                    TimeZone = reader.ReadFString();
+                    TargetCulture = reader.ReadFString();
+                    break;
+                case TextHistoryType.AsDateTime:
+                    SourceDateTime = reader.ReadInt64();
+                    DateStyle = reader.ReadSByte();
+                    TimeStyle = reader.ReadSByte();
+                    if (DateStyle == 5 /* EDateTimeStyle::Custom */) CustomPattern = reader.ReadFString();
+                    TimeZone = reader.ReadFString();
                     TargetCulture = reader.ReadFString();
                     break;
                 default:
@@ -419,18 +472,42 @@ public class TextPropertyData : PropertyData<FString>
                     SourceFmt.Write(writer, false, serializationContext);
                     writer.Write((byte)TransformType);
                     break;
+                case TextHistoryType.NamedFormat:
+                    SourceFmt.Write(writer, false);
+                    writer.Write(NamedArguments?.Length ?? 0);
+                    foreach (var argument in NamedArguments ?? Array.Empty<FFormatArgumentData>())
+                    {
+                        writer.Write(argument.ArgumentName);
+                        argument.ArgumentValue.Write(writer);
+                    }
+                    break;
                 case TextHistoryType.AsNumber:
-                    SourceValue.Write(writer);
-                    if (FormatOptions != null)
-                    {
-                        writer.Write(1);
-                        FormatOptions.Write(writer);
-                    }
-                    else
-                    {
-                        writer.Write(0);
-                    }
-                    writer.Write(TargetCulture);
+                case TextHistoryType.AsPercent:
+                    WriteFormatNumber(writer);
+                    break;
+                case TextHistoryType.AsCurrency:
+                    if (writer.Asset.ObjectVersion >= ObjectVersion.VER_UE4_ADDED_CURRENCY_CODE_TO_FTEXT) writer.Write(CurrencyCode ?? new FString(""));
+                    WriteFormatNumber(writer);
+                    break;
+                case TextHistoryType.AsDate:
+                    writer.Write(SourceDateTime);
+                    writer.Write(DateStyle);
+                    if (writer.Asset.ObjectVersion >= ObjectVersion.VER_UE4_FTEXT_HISTORY_DATE_TIMEZONE) writer.Write(TimeZone ?? new FString(""));
+                    writer.Write(TargetCulture ?? new FString(""));
+                    break;
+                case TextHistoryType.AsTime:
+                    writer.Write(SourceDateTime);
+                    writer.Write(TimeStyle);
+                    writer.Write(TimeZone ?? new FString(""));
+                    writer.Write(TargetCulture ?? new FString(""));
+                    break;
+                case TextHistoryType.AsDateTime:
+                    writer.Write(SourceDateTime);
+                    writer.Write(DateStyle);
+                    writer.Write(TimeStyle);
+                    if (DateStyle == 5) writer.Write(CustomPattern ?? new FString(""));
+                    writer.Write(TimeZone ?? new FString(""));
+                    writer.Write(TargetCulture ?? new FString(""));
                     break;
                 default:
                     throw new NotImplementedException("Unimplemented writer for " + HistoryType.ToString());
@@ -455,6 +532,28 @@ public class TextPropertyData : PropertyData<FString>
             default:
                 throw new NotImplementedException("Unimplemented display for " + HistoryType.ToString());
         }
+    }
+
+    // FTextHistory_FormatNumber::Serialize: the value, whether options follow, the options, the culture
+    private void ReadFormatNumber(AssetBinaryReader reader)
+    {
+        SourceValue = new FFormatArgumentValue(reader);
+        if (reader.ReadBooleanInt())
+        {
+            FormatOptions = new FNumberFormattingOptions(reader);
+        }
+        TargetCulture = reader.ReadFString();
+    }
+
+    private void WriteFormatNumber(AssetBinaryWriter writer)
+    {
+        SourceValue.Write(writer);
+        writer.Write(FormatOptions != null ? 1 : 0);
+        if (FormatOptions != null)
+        {
+            FormatOptions.Write(writer);
+        }
+        writer.Write(TargetCulture);
     }
 
     public override void FromString(string[] d, UAsset asset)
