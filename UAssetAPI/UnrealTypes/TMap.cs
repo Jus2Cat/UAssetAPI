@@ -307,6 +307,7 @@ namespace UAssetAPI.UnrealTypes
             Initialize();
             foreach (KeyValuePair<TKey, TValue> pair in items)
             {
+                if (_keyedCollection.Contains(pair.Key)) _keyedCollection.Remove(pair.Key);
                 _keyedCollection.Add(pair);
             }
         }
