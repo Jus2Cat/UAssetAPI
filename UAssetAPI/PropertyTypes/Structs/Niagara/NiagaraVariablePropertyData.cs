@@ -1,5 +1,6 @@
 using System;
 using UAssetAPI.PropertyTypes.Objects;
+using Newtonsoft.Json;
 using UAssetAPI.UnrealTypes;
 
 namespace UAssetAPI.PropertyTypes.Structs;
@@ -16,7 +17,11 @@ public class NiagaraDataChannelVariablePropertyData : NiagaraVariableBasePropert
 
 public class NiagaraVariableBasePropertyData : StructPropertyData
 {
+    /// <summary>The variable's name — what the editor shows on an input node and in a parameter list.</summary>
+    [JsonProperty]
     public FName VariableName;
+    /// <summary>Its FNiagaraTypeDefinition: the struct, enum or class the value is of.</summary>
+    [JsonProperty]
     public StructPropertyData TypeDef;
 
     public NiagaraVariableBasePropertyData(FName name, FName forcedType) : base(name, forcedType) { }
@@ -64,6 +69,8 @@ public class NiagaraVariableBasePropertyData : StructPropertyData
 
 public class NiagaraVariablePropertyData : NiagaraVariableBasePropertyData
 {
+    /// <summary>The value the variable holds, in the engine's own layout for its type.</summary>
+    [JsonProperty]
     public byte[] VarData;
 
     public NiagaraVariablePropertyData(FName name, FName forcedType) : base(name, forcedType) { }
@@ -106,6 +113,8 @@ public class NiagaraVariablePropertyData : NiagaraVariableBasePropertyData
 
 public class NiagaraVariableWithOffsetPropertyData : NiagaraVariableBasePropertyData
 {
+    /// <summary>Where this variable's bytes sit in the parameter store's data blob.</summary>
+    [JsonProperty]
     public int VariableOffset;
 
     public NiagaraVariableWithOffsetPropertyData(FName name, FName forcedType) : base(name, forcedType) { }
