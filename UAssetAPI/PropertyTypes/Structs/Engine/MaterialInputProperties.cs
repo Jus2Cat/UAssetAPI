@@ -217,8 +217,12 @@ public class ScalarMaterialInputPropertyData : MaterialInputPropertyData<float>
     {
         base.Read(reader, includeHeader, leng1, leng2, serializationContext);
 
-        reader.ReadInt32(); // bUseConstantValue; always false
+        // FMaterialInput<float>: UseConstant, then Constant (MaterialExpressionIO.h) - the editor shows
+        // the constant on the material node's pin whether or not the input uses it, and the tool
+        // must say whether it is in effect, so neither is dropped
+        UseConstant = reader.ReadInt32() != 0;
         Value = reader.ReadSingle();
+        ConstantFloats = new float[] { Value };
     }
 
     public override int Write(AssetBinaryWriter writer, bool includeHeader, PropertySerializationContext serializationContext = PropertySerializationContext.Normal)
