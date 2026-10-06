@@ -108,10 +108,15 @@ public class UnrealBinaryReader : BinaryReader
         return ReadFString()?.Value;
     }
 
+    private bool FitsInStream(long bytes) => bytes <= BaseStream.Length - BaseStream.Position;
+
     public virtual FString ReadFString()
     {
         int length = this.ReadInt32();
-        if (length > MainSerializer.MaxSerializedArrayLength) throw new InvalidOperationException($"Invalid FString length: {length}"); // some parsing error is obviously occurring if we have extremely large strings
+        // a string longer than what is left of the stream is a parsing error; one that fits is data, however long:
+        // the engine has no fixed limit (String.cpp.inl checks only an archive's MaxSerializeSize, which file readers
+        // do not set), and an asset registry tag (a level's ActorsMetaData) holds more than 1 MiB
+        if (!FitsInStream(length < 0 ? -2L * length : length)) throw new InvalidOperationException($"Invalid FString length: {length}");
         switch (length)
         {
             case < 0:
@@ -131,7 +136,7 @@ public class UnrealBinaryReader : BinaryReader
     public virtual FString ReadUtf8String()
     {
         int length = this.ReadInt32();
-        if (length > MainSerializer.MaxSerializedArrayLength) throw new InvalidOperationException($"Invalid UTF-8 string length: {length}");
+        if (!FitsInStream(length)) throw new InvalidOperationException($"Invalid UTF-8 string length: {length}");
         switch (length)
         {
             case < 0:
