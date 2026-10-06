@@ -493,6 +493,12 @@ namespace UAssetAPI
                 ArrayIndex = reader.ReadInt32();
             }
 
+            // a tag declaring more bytes than are left of the package is not a property: the reader lost the
+            // export's layout (a native serializer it does not know, as RigVMLink of a Control Rig). Said at once —
+            // reading on to the end of the stream first cost up to a second a time, 20 s on one Control Rig
+            if (!reader.Asset.HasUnversionedProperties && (leng < 0 || leng > reader.BaseStream.Length - reader.BaseStream.Position))
+                throw new FormatException($"Property {name} : {type} declares {leng} bytes, {reader.BaseStream.Length - reader.BaseStream.Position} are left — the export's layout is not what this reader expects");
+
             // UASSETAPI_TRACE=1: every tagged property as it is about to be read (name, type, offset) — the
             // trail that ends at the one a reader could not decode
             if (Environment.GetEnvironmentVariable("UASSETAPI_TRACE") == "1")
