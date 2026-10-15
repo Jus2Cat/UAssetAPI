@@ -3260,6 +3260,36 @@ namespace UAssetAPI
             return JsonConvert.SerializeObject(value, jsonFormatting, jsonSettings);
         }
 
+        private JsonSerializerSettings pathJsonSettings;
+
+        /// <summary>
+        /// Serializes an object as JSON in which every FPackageIndex is the path of the object it points at
+        /// ("import:/Script/Engine.Actor", "export:PersistentLevel.Actor_1"), not its index. Two saves of one package
+        /// number the same objects differently (an added name, import or export shifts every index after it), so this is
+        /// the form in which an export of one save compares with the same export of another. Not readable back.
+        /// </summary>
+        /// <param name="value">The object to serialize as JSON.</param>
+        public string SerializeJsonObjectWithPaths(object value)
+        {
+            if (pathJsonSettings == null)
+            {
+                var paths = new FPackageIndexPathJsonConverter(this);
+                var converters = jsonSettings.Converters.Where(converter => !(converter is FPackageIndexJsonConverter)).ToList();
+                converters.Add(paths);
+                pathJsonSettings = new JsonSerializerSettings
+                {
+                    TypeNameHandling = jsonSettings.TypeNameHandling,
+                    NullValueHandling = jsonSettings.NullValueHandling,
+                    FloatParseHandling = jsonSettings.FloatParseHandling,
+                    ReferenceLoopHandling = jsonSettings.ReferenceLoopHandling,
+                    MetadataPropertyHandling = jsonSettings.MetadataPropertyHandling,
+                    ContractResolver = new PathContractResolver(paths),
+                    Converters = converters
+                };
+            }
+            return JsonConvert.SerializeObject(value, Formatting.None, pathJsonSettings);
+        }
+
         /// <summary>
         /// Deserializes an object from JSON.
         /// </summary>
