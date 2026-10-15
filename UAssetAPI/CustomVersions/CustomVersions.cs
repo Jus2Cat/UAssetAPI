@@ -935,6 +935,110 @@ namespace UAssetAPI.CustomVersions
         [Introduced(EngineVersion.VER_UE5_7)]
         LandscapeAdvancedWeightBlending,
 
+        // UE 5.8.3 (FortniteMainBranchObjectVersions.inl, R7-v5.0-5.8.3): every entry after 5.7's last, with its
+        // number, so that LatestVersion is the engine's the packages are saved with
+        [Introduced(EngineVersion.VER_UE5_8)]
+        FastGeoTransformerSettingAssets = 226,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        UAFProceduralSystems = 227,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        Firefight_228 = 228,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        WorldPartitionDataLayerDefaultRuntimeState = 229,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        UAFVariablesGuid = 230,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        UAFVariableReferenceGUID = 231,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        MediaColorSettingsUnification = 232,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        PCGMetadataOpStringTypeChange = 233,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        LiveLinkCompressSubSectionData = 234,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        OptionalQuantizePerFaceBoundsInChaosTriMeshBVH = 235,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        DataflowAddGraphTopologyGuid = 236,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        AddMeshDeformerUsageFlag = 237,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        LandscapeTexturePatchAlphaOverride = 238,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        PCGAllowTemplateWhenSpawningFromAttribute = 239,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        CollisionFilter64Bit = 240,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        UAFAssetData = 241,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        RootMotionModifierRotationOffset = 242,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        PolyBezierSplineAnchorTripleLayout = 243,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        VerseRepairDataWithMinusZeroValue = 244,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        CompositePassKeyerSource = 245,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        OpenColorIOv251 = 246,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        SplineComponentReparameterizeOnLoad = 247,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        DeprecateUAFExternalPackages = 248,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        RigVMPinDefaultValueObjectPtr = 249,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        AnimSequenceTrackTimestamps = 250,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        PCG_PropertyBagHierarchySupport_Outdated = 251,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        PCG_PropertyBagHierarchySupport = 252,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        OverridableLandscapeGrassTypes = 253,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        AnimSequenceTransformProviderBounds = 254,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        EnumUnderlyingType = 255,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        Composite_LayerNameDeprecation = 256,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        DynamicMeshAttributesTriangleLabels = 257,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        FixPublicEntityComponentsAndSubobjects = 258,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        AddPhysMatOverrideFlag = 259,
+
         /// <summary>
         /// FTextHistory_Base serializes a DevNotes string after Namespace/Key/SourceString when the archive
         /// carries editor data (Engine/Source/Runtime/Core/Private/Internationalization/TextHistory.cpp;
@@ -942,6 +1046,30 @@ namespace UAssetAPI.CustomVersions
         /// </summary>
         [Introduced(EngineVersion.VER_UE5_8)]
         AddDevNotesToFText = 260,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        PCGMeshSamplerDefaultColorPCGSubdivideSplineBoundsFixes = 261,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        DynamicDelegatePayloads = 262,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        CompactDynamicDelegatePayloads = 263,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        InstancedSkinnedMeshBoneAttachments = 264,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        PCGCustomHLSLAttributeCreationSettingsToggle = 265,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        ConvertFPCGMetadataAttributeToGenericAttributes = 266,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        MergePCGMetadataAttributeBaseAndGeneric = 267,
+
+        [Introduced(EngineVersion.VER_UE5_8)]
+        AnimSequenceTransformProviderLayers = 268,
 
         [Introduced(EngineVersion.VER_UE4_AUTOMATIC_VERSION_PLUS_ONE)]
         VersionPlusOne,

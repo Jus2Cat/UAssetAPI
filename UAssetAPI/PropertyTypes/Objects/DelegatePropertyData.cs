@@ -1,4 +1,6 @@
+using System;
 using Newtonsoft.Json;
+using UAssetAPI.CustomVersions;
 using UAssetAPI.UnrealTypes;
 
 namespace UAssetAPI.PropertyTypes.Objects;
@@ -28,10 +30,26 @@ public class FDelegate
 
     public FDelegate() { }
 
+    /// <summary>
+    /// UE 5.8 (ScriptDelegates.h, TScriptDelegate operator<<): at DynamicDelegatePayloads (262) a bool after the name
+    /// says whether a payload follows; from CompactDynamicDelegatePayloads (263) the bool is gone and a payload is marked
+    /// by this suffix on the function name instead — without one the layout is 5.7's.
+    /// </summary>
+    public const string PayloadSuffix = "[bHasPayload]";
+
     public FDelegate(AssetBinaryReader reader)
     {
         Object = new FPackageIndex(reader);
         Delegate = reader.ReadFName();
+        var version = reader.Asset.GetCustomVersion<FFortniteMainBranchObjectVersion>();
+        var hasPayload = false;
+        if (version >= FFortniteMainBranchObjectVersion.DynamicDelegatePayloads && version < FFortniteMainBranchObjectVersion.CompactDynamicDelegatePayloads)
+            hasPayload = reader.ReadBooleanInt(); // FArchive writes a bool as 4 bytes
+        else if (version >= FFortniteMainBranchObjectVersion.CompactDynamicDelegatePayloads)
+            hasPayload = Delegate?.ToString().EndsWith(PayloadSuffix) == true;
+        // the payload's layout is the engine's FDynamicDelegatePropertyPayload, not in 5.8.3's sources (payloads are off
+        // there, UE_USE_DYNAMIC_DELEGATE_PAYLOADS 0): a delegate with one is not readable — said, not skipped
+        if (hasPayload) throw new FormatException($"Delegate {Delegate} carries a payload (UE 5.8 dynamic delegate payloads), whose layout is not known");
     }
 
     public int Write(AssetBinaryWriter writer)
@@ -40,6 +58,12 @@ public class FDelegate
         int size = sizeof(int);
         writer.Write(Delegate);
         size += 8;
+        var version = writer.Asset.GetCustomVersion<FFortniteMainBranchObjectVersion>();
+        if (version >= FFortniteMainBranchObjectVersion.DynamicDelegatePayloads && version < FFortniteMainBranchObjectVersion.CompactDynamicDelegatePayloads)
+        {
+            writer.Write(0); // "no payload": FArchive writes a bool as 4 bytes
+            size += sizeof(int);
+        }
         return size;
     }
 }
