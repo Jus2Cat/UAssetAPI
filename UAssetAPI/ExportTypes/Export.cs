@@ -130,6 +130,13 @@ namespace UAssetAPI.ExportTypes
         public byte[] Extras;
 
         /// <summary>
+        /// Tagged properties of this export that were not read as the engine wrote them (FPropertySizeProblem): the
+        /// reader went on from each one's declared end. Null when there are none.
+        /// </summary>
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public List<FPropertySizeProblem> PropertySizeProblems;
+
+        /// <summary>
         /// The asset that this export is parsed with.
         /// </summary>
         [JsonIgnore]

@@ -361,12 +361,22 @@ namespace UAssetAPI
                 {
                     data.Read(reader, includeHeader, leng);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     // if asset is unversioned, bubble the error up to make the whole export fail
                     // because unversioned headers aren't properly reconstructed currently
                     if (data is StructPropertyData && !reader.Asset.HasUnversionedProperties)
                     {
+                        // the struct's bytes are kept raw: said, not swallowed — its value is not known
+                        reader.PropertyProblems?.Add(new FPropertySizeProblem
+                        {
+                            Property = $"{parentName?.ToString() ?? "-"}.{name}",
+                            Type = type.ToString(),
+                            Declared = leng,
+                            Read = leng,
+                            Offset = posBefore - reader.ExportStart,
+                            Reason = $"{ex.GetType().Name}: {ex.Message}",
+                        });
                         reader.BaseStream.Position = posBefore;
                         data = new RawStructPropertyData(name);
                         data.PropertyTagFlags = propertyTagFlags;
@@ -505,8 +515,29 @@ namespace UAssetAPI
                 Console.Error.WriteLine($"[trace] {parentName?.ToString() ?? "-"}.{name} : {type} ({typeName?.ToString() ?? "-"}) @ {startingOffset} len {leng}");
             long payloadStart = reader.BaseStream.Position;
             PropertyData result = TypeToClass(type, name, ancestry, parentName, parentModulePath, reader.Asset, reader, leng, propertyTagFlags, ArrayIndex, includeHeader, isZero, typeName);
-            if (Environment.GetEnvironmentVariable("UASSETAPI_TRACE") == "1" && leng > 0 && reader.BaseStream.Position - payloadStart != leng && type.Value.Value != "BoolProperty")
-                Console.Error.WriteLine($"[trace] !! {name} : {type} read {reader.BaseStream.Position - payloadStart} of {leng} declared bytes");
+            // the tag says how long the value is: a value read to another length was not read as the engine wrote it
+            // (a field a newer engine added inside a native struct). Said, and the next tag is read from where the
+            // engine put it — before, the reader went on from wherever it stopped
+            if (!reader.Asset.HasUnversionedProperties && !isZero && leng > 0 && type.Value.Value != "BoolProperty")
+            {
+                // the declared size counts the value only: what the property read of its own tag first is not in it
+                long valueStart = result.ValueStart >= 0 ? result.ValueStart : payloadStart;
+                long taken = reader.BaseStream.Position - valueStart;
+                if (taken != leng)
+                {
+                    reader.PropertyProblems?.Add(new FPropertySizeProblem
+                    {
+                        Property = $"{parentName?.ToString() ?? "-"}.{name}",
+                        Type = type.ToString(),
+                        Declared = leng,
+                        Read = taken,
+                        Offset = valueStart - reader.ExportStart,
+                    });
+                    if (Environment.GetEnvironmentVariable("UASSETAPI_TRACE") == "1")
+                        Console.Error.WriteLine($"[trace] !! {name} : {type} read {taken} of {leng} declared bytes");
+                    reader.BaseStream.Position = valueStart + leng;
+                }
+            }
             if (structType != null && result is StructPropertyData strucProp) strucProp.StructType = FName.DefineDummy(reader.Asset, structType);
             result.Offset = startingOffset;
             //Debug.WriteLine(type);

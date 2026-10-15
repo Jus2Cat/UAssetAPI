@@ -115,6 +115,13 @@ namespace UAssetAPI.PropertyTypes.Objects
         public FName Name = null;
 
         /// <summary>
+        /// Where this property's value starts in the stream: the end of its tag. Before UE 5.4 (and for a guid or
+        /// extensions after) the end of the tag is read by the property itself (ReadEndPropertyTag), so the reader only
+        /// knows it here; -1 when the type reads no tag end of its own. Not serialized.
+        /// </summary>
+        internal long ValueStart = -1;
+
+        /// <summary>
         /// The ancestry of this property. Contains information about all the classes/structs that this property is contained within. Not serialized.
         /// </summary>
         [JsonIgnore]
@@ -278,6 +285,7 @@ namespace UAssetAPI.PropertyTypes.Objects
                     }
                 }
             }
+            ValueStart = reader.BaseStream.Position;
         }
 
         /// <summary>

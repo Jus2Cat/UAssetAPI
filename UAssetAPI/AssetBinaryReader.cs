@@ -233,6 +233,13 @@ public class AssetBinaryReader : UnrealBinaryReader
     public UAsset Asset;
     public bool LoadUexp = true;
 
+    /// <summary>
+    /// While an export is read: its properties that were not read as the engine wrote them (MainSerializer.Read adds,
+    /// UAsset.ConvertExportToChildExportAndRead hands them to the export), and where the export starts. Null outside.
+    /// </summary>
+    public List<FPropertySizeProblem> PropertyProblems;
+    public long ExportStart;
+
     public AssetBinaryReader(Stream stream, UAsset asset = null) : base(stream)
     {
         Asset = asset;

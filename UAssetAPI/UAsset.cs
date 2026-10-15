@@ -996,6 +996,25 @@ namespace UAssetAPI
 
         public void ConvertExportToChildExportAndRead(AssetBinaryReader reader, int i, bool read = true)
         {
+            // an export read while another is (a dependency) keeps its own list; the outer one gets its back after
+            var outerProblems = reader.PropertyProblems;
+            var outerStart = reader.ExportStart;
+            reader.PropertyProblems = read ? new List<FPropertySizeProblem>() : null;
+            reader.ExportStart = Exports[i].SerialOffset;
+            try
+            {
+                ConvertExportToChildExportAndReadBody(reader, i, read);
+            }
+            finally
+            {
+                if (reader.PropertyProblems != null && reader.PropertyProblems.Count > 0) Exports[i].PropertySizeProblems = reader.PropertyProblems;
+                reader.PropertyProblems = outerProblems;
+                reader.ExportStart = outerStart;
+            }
+        }
+
+        private void ConvertExportToChildExportAndReadBody(AssetBinaryReader reader, int i, bool read)
+        {
 #pragma warning disable CS0168 // Variable is declared but never used
             try
             {
@@ -2679,6 +2698,9 @@ namespace UAssetAPI
         public virtual MemoryStream WriteData()
         {
             // a section that was not read would be written back empty: the package would lose it silently
+            var misread = Exports?.Where(export => export?.PropertySizeProblems != null).Select(export => export.ObjectName?.ToString()).ToList();
+            if (misread != null && misread.Count > 0)
+                throw new InvalidOperationException($"Cannot write a package whose properties were not read as written: {string.Join(", ", misread)}");
             if (HeaderSectionProblems != null && HeaderSectionProblems.Count > 0)
                 throw new InvalidOperationException($"Cannot write a package whose summary section(s) were not read: {string.Join(", ", HeaderSectionProblems.ConvertAll(p => p.Section))}");
             isSerializationTime = true;
