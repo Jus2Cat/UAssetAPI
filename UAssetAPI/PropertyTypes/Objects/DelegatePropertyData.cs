@@ -31,7 +31,7 @@ public class FDelegate
     public FDelegate() { }
 
     /// <summary>
-    /// UE 5.8 (ScriptDelegates.h, TScriptDelegate operator<<): at DynamicDelegatePayloads (262) a bool after the name
+    /// UE 5.8 (ScriptDelegates.h, TScriptDelegate operator&lt;&lt;): at DynamicDelegatePayloads (262) a bool after the name
     /// says whether a payload follows; from CompactDynamicDelegatePayloads (263) the bool is gone and a payload is marked
     /// by this suffix on the function name instead — without one the layout is 5.7's.
     /// </summary>
