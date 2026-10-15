@@ -2046,6 +2046,11 @@ namespace UAssetAPI
                         var siteDescription = reader.ReadFString();
                         var isEditorOnly = reader.ReadBooleanInt();
                         var isOptional = reader.ReadBooleanInt();
+                        // UE 5.8: the site's DevNotes come next (GatherableTextData.cpp); without them every field after is
+                        // read one string early — a note's length was taken for a metadata count
+                        var devNotes = GetCustomVersion<FFortniteMainBranchObjectVersion>() >= FFortniteMainBranchObjectVersion.AddDevNotesToFText && !IsFilterEditorOnly
+                            ? reader.ReadFString()
+                            : null;
                         var infoMetaData = reader.ReadLocMetadataObject();
                         var keyMetaData = reader.ReadLocMetadataObject();
 
@@ -2055,6 +2060,7 @@ namespace UAssetAPI
                             SiteDescription = siteDescription,
                             IsEditorOnly = isEditorOnly,
                             IsOptional = isOptional,
+                            DevNotes = devNotes,
                             InfoMetaData = infoMetaData,
                             KeyMetaData = keyMetaData
                         };
