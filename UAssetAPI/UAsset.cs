@@ -348,6 +348,12 @@ namespace UAssetAPI
         public List<FGatherableTextData> GatherableTextData;
 
         /// <summary>
+        /// Optional sections of the package summary that could not be read (see FHeaderSectionProblem). Empty when every
+        /// section was read; a package with any is not written back (its unread sections would be lost).
+        /// </summary>
+        public List<FHeaderSectionProblem> HeaderSectionProblems = new List<FHeaderSectionProblem>();
+
+        /// <summary>
         /// Map of object exports. UAssetAPI used to call these "categories."
         /// </summary>
         public List<Export> Exports;
@@ -1978,6 +1984,39 @@ namespace UAssetAPI
             DataResourceOffset = ObjectVersionUE5 >= ObjectVersionUE5.DATA_RESOURCES ? reader.ReadInt32() : -1;
         }
 
+
+        // The end of a summary section: the nearest start of another section, the summary's size, the first export's data
+        // or the end of the stream — whichever comes first after it.
+        private long SectionEnd(long start, long streamLength)
+        {
+            long end = streamLength;
+            void Consider(long candidate) { if (candidate > start && candidate < end) end = candidate; }
+            foreach (long candidate in new long[] { NameOffset, SoftObjectPathsOffset, GatherableTextDataOffset, MetaDataOffset,
+                ImportOffset, ExportOffset, DependsOffset, SoftPackageReferencesOffset, SearchableNamesOffset, ThumbnailTableOffset,
+                ImportTypeHierarchiesOffset, AssetRegistryDataOffset, WorldTileInfoDataOffset, PreloadDependencyOffset,
+                DataResourceOffset, SectionSixOffset })
+                Consider(candidate);
+            if (Exports != null) foreach (var export in Exports) if (export.SerialOffset > 0) Consider(export.SerialOffset);
+            return end;
+        }
+
+        // An optional summary section read within its bounds: a failure — or reading past the section's end, which means
+        // the package was saved by an engine newer than this reader — is recorded, and the package is read on.
+        private void ReadOptionalSection(AssetBinaryReader reader, string section, long start, Action read, bool checkEnd = true)
+        {
+            long end = SectionEnd(start, reader.BaseStream.Length);
+            try
+            {
+                read();
+                if (checkEnd && reader.BaseStream.Position > end)
+                    throw new FormatException($"read {reader.BaseStream.Position - end} byte(s) past the section's end at {end}: the package is newer than this reader");
+            }
+            catch (Exception ex)
+            {
+                HeaderSectionProblems.Add(new FHeaderSectionProblem { Section = section, Offset = start, Reason = $"{ex.GetType().Name}: {ex.Message}" });
+            }
+        }
+
         /// <summary>
         /// Reads an asset into memory.
         /// </summary>
@@ -2025,7 +2064,7 @@ namespace UAssetAPI
             }
 
             // Gatherable text
-            if (GatherableTextDataOffset > 0 && GatherableTextDataCount > 0)
+            if (GatherableTextDataOffset > 0 && GatherableTextDataCount > 0) ReadOptionalSection(reader, "GatherableTextData", GatherableTextDataOffset, () =>
             {
                 reader.BaseStream.Seek(GatherableTextDataOffset, SeekOrigin.Begin);
 
@@ -2070,13 +2109,13 @@ namespace UAssetAPI
                     var textData = new FGatherableTextData { NamespaceName = namespaceName, SourceData = sourceData, SourceSiteContexts = contexts };
                     GatherableTextData.Add(textData);
                 }
-            }
+            });
 
-            if (MetaDataOffset > 0)
+            if (MetaDataOffset > 0) ReadOptionalSection(reader, "MetaData", MetaDataOffset, () =>
             {
                 reader.BaseStream.Seek(MetaDataOffset, SeekOrigin.Begin);
                 MetaData = new FMetaData(reader);
-            }
+            });
 
             // Imports
             Imports = new List<Import>();
@@ -2129,7 +2168,7 @@ namespace UAssetAPI
 
             // SoftPackageReferenceList
             SoftPackageReferenceList = null;
-            if (SoftPackageReferencesOffset > 0)
+            if (SoftPackageReferencesOffset > 0) ReadOptionalSection(reader, "SoftPackageReferences", SoftPackageReferencesOffset, () =>
             {
                 reader.BaseStream.Seek(SoftPackageReferencesOffset, SeekOrigin.Begin);
                 SoftPackageReferenceList = new List<FString>();
@@ -2139,9 +2178,9 @@ namespace UAssetAPI
                         ? FString.FromString(reader.ReadFName().ToString())
                         : reader.ReadFString());
                 }
-            }
+            });
 
-            if (AssetRegistryDataOffset > 0)
+            if (AssetRegistryDataOffset > 0) ReadOptionalSection(reader, "AssetRegistryData", AssetRegistryDataOffset, () =>
             {
                 AssetRegistryDependencyDataOffset = -1;
                 reader.BaseStream.Seek(AssetRegistryDataOffset, SeekOrigin.Begin);
@@ -2179,7 +2218,7 @@ namespace UAssetAPI
                         ExtraPackageDependencies = reader.ReadArray(() => new KeyValuePair<FName, uint>(reader.ReadFName(), reader.ReadUInt32()));
                     }
                 }
-            }
+            });
             else
             {
                 doWeHaveAssetRegistryData = false;
@@ -2202,12 +2241,12 @@ namespace UAssetAPI
 
             // WorldTileInfoDataOffset
             WorldTileInfo = null;
-            if (WorldTileInfoDataOffset > 0)
+            if (WorldTileInfoDataOffset > 0) ReadOptionalSection(reader, "WorldTileInfo", WorldTileInfoDataOffset, () =>
             {
                 reader.BaseStream.Seek(WorldTileInfoDataOffset, SeekOrigin.Begin);
                 WorldTileInfo = new FWorldTileInfo();
                 WorldTileInfo.Read(reader, this);
-            }
+            });
             else
             {
                 doWeHaveWorldTileInfo = false;
@@ -2342,7 +2381,7 @@ namespace UAssetAPI
             }
 
             // Searchable names
-            if (SearchableNamesOffset > 0)
+            if (SearchableNamesOffset > 0) ReadOptionalSection(reader, "SearchableNames", SearchableNamesOffset, () =>
             {
                 SearchableNames = new SortedDictionary<FPackageIndex, List<FName>>();
                 reader.BaseStream.Seek(SearchableNamesOffset, SeekOrigin.Begin);
@@ -2361,16 +2400,16 @@ namespace UAssetAPI
 
                     SearchableNames.Add(FPackageIndex.FromRawIndex(collectionIndex), searchableCollection);
                 }
-            }
+            });
 
-            if (ImportTypeHierarchiesOffset > 0)
+            if (ImportTypeHierarchiesOffset > 0) ReadOptionalSection(reader, "ImportTypeHierarchies", ImportTypeHierarchiesOffset, () =>
             {
                 reader.BaseStream.Seek(ImportTypeHierarchiesOffset, SeekOrigin.Begin);
                 ImportTypeHierarchies = reader.ReadMap(ImportTypeHierarchiesCount, () => new FPackageIndex(reader), () => new FImportTypeHierarchy(reader));
-            }
+            });
 
             // Thumbnails
-            if (ThumbnailTableOffset > 0)
+            if (ThumbnailTableOffset > 0) ReadOptionalSection(reader, "ThumbnailTable", ThumbnailTableOffset, () =>
             {
                 reader.BaseStream.Seek(ThumbnailTableOffset, SeekOrigin.Begin);
                 var thumbnailCount = reader.ReadInt32();
@@ -2395,7 +2434,7 @@ namespace UAssetAPI
                     reader.BaseStream.Seek(kv.Value, SeekOrigin.Begin);
                     Thumbnails[kv.Key] = reader.ReadObjectThumbnail();
                 }
-            }
+            }, checkEnd: false);
         }
 
         private static BitArray ReadBitArray(AssetBinaryReader reader)
@@ -2639,6 +2678,9 @@ namespace UAssetAPI
         /// <returns>A new MemoryStream containing the full binary data of the serialized asset.</returns>
         public virtual MemoryStream WriteData()
         {
+            // a section that was not read would be written back empty: the package would lose it silently
+            if (HeaderSectionProblems != null && HeaderSectionProblems.Count > 0)
+                throw new InvalidOperationException($"Cannot write a package whose summary section(s) were not read: {string.Join(", ", HeaderSectionProblems.ConvertAll(p => p.Section))}");
             isSerializationTime = true;
 
             // resolve ancestries
