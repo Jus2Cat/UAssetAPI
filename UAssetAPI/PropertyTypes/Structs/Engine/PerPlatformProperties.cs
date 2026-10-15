@@ -41,6 +41,16 @@ public abstract class TPerPlatformPropertyData<T> : PropertyData<T[]>
 
     protected abstract T ReadValue(AssetBinaryReader reader);
 
+    /// <returns>The value written as text, or default when it does not parse.</returns>
+    protected abstract T ParseValue(string text);
+
+    /// <summary>The default from the first field; overrides are not given as text.</summary>
+    public override void FromString(string[] d, UAsset asset)
+    {
+        Value = [ParseValue(d.Length > 0 ? d[0] : null)];
+        PerPlatform = new List<KeyValuePair<FName, T>>();
+    }
+
     /// <returns>Bytes written.</returns>
     protected abstract int WriteValue(AssetBinaryWriter writer, T value);
 
@@ -119,15 +129,7 @@ public class PerPlatformBoolPropertyData : TPerPlatformPropertyData<bool>
         return sizeof(int);
     }
 
-    public override void FromString(string[] d, UAsset asset)
-    {
-        var valueList = new List<bool>();
-        if (bool.TryParse(d[0], out bool res1)) valueList.Add(res1);
-        if (bool.TryParse(d[1], out bool res2)) valueList.Add(res2);
-        if (bool.TryParse(d[2], out bool res3)) valueList.Add(res3);
-        if (bool.TryParse(d[3], out bool res4)) valueList.Add(res4);
-        Value = valueList.ToArray();
-    }
+    protected override bool ParseValue(string text) => bool.TryParse(text, out bool value) && value;
 }
 
 /// <summary>
@@ -150,15 +152,7 @@ public class PerPlatformFloatPropertyData : TPerPlatformPropertyData<float>
         return sizeof(float);
     }
 
-    public override void FromString(string[] d, UAsset asset)
-    {
-        var valueList = new List<float>();
-        if (float.TryParse(d[0], out float res1)) valueList.Add(res1);
-        if (float.TryParse(d[1], out float res2)) valueList.Add(res2);
-        if (float.TryParse(d[2], out float res3)) valueList.Add(res3);
-        if (float.TryParse(d[3], out float res4)) valueList.Add(res4);
-        Value = valueList.ToArray();
-    }
+    protected override float ParseValue(string text) => float.TryParse(text, out float value) ? value : 0;
 }
 
 /// <summary>
@@ -181,15 +175,7 @@ public class PerPlatformIntPropertyData : TPerPlatformPropertyData<int>
         return sizeof(int);
     }
 
-    public override void FromString(string[] d, UAsset asset)
-    {
-        var valueList = new List<int>();
-        if (int.TryParse(d[0], out int res1)) valueList.Add(res1);
-        if (int.TryParse(d[1], out int res2)) valueList.Add(res2);
-        if (int.TryParse(d[2], out int res3)) valueList.Add(res3);
-        if (int.TryParse(d[3], out int res4)) valueList.Add(res4);
-        Value = valueList.ToArray();
-    }
+    protected override int ParseValue(string text) => int.TryParse(text, out int value) ? value : 0;
 }
 
 /// <summary>
@@ -213,13 +199,5 @@ public class PerPlatformFrameRatePropertyData : TPerPlatformPropertyData<FFrameR
         return sizeof(int) * 2;
     }
 
-    public override void FromString(string[] d, UAsset asset)
-    {
-        var valueList = new List<FFrameRate>();
-        if (FFrameRate.TryParse(d[0], out FFrameRate res1)) valueList.Add(res1);
-        if (FFrameRate.TryParse(d[1], out FFrameRate res2)) valueList.Add(res2);
-        if (FFrameRate.TryParse(d[2], out FFrameRate res3)) valueList.Add(res3);
-        if (FFrameRate.TryParse(d[3], out FFrameRate res4)) valueList.Add(res4);
-        Value = valueList.ToArray();
-    }
+    protected override FFrameRate ParseValue(string text) => FFrameRate.TryParse(text, out FFrameRate value) ? value : default;
 }

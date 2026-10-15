@@ -2697,7 +2697,8 @@ namespace UAssetAPI
         /// <returns>A new MemoryStream containing the full binary data of the serialized asset.</returns>
         public virtual MemoryStream WriteData()
         {
-            // a section that was not read would be written back empty: the package would lose it silently
+            // a property not read as written would be written back as read, and a section not read would be written
+            // back empty: either way the package would change silently
             var misread = Exports?.Where(export => export?.PropertySizeProblems != null).Select(export => export.ObjectName?.ToString()).ToList();
             if (misread != null && misread.Count > 0)
                 throw new InvalidOperationException($"Cannot write a package whose properties were not read as written: {string.Join(", ", misread)}");
@@ -3283,6 +3284,7 @@ namespace UAssetAPI
         }
 
         private JsonSerializerSettings pathJsonSettings;
+        private readonly object pathJsonSettingsLock = new object();
 
         /// <summary>
         /// Serializes an object as JSON in which every FPackageIndex is the path of the object it points at
@@ -3293,20 +3295,20 @@ namespace UAssetAPI
         /// <param name="value">The object to serialize as JSON.</param>
         public string SerializeJsonObjectWithPaths(object value)
         {
-            if (pathJsonSettings == null)
+            // first called from the reader's parallel loop: one settings object (and one contract cache) per asset
+            lock (pathJsonSettingsLock)
             {
-                var paths = new FPackageIndexPathJsonConverter(this);
-                var converters = jsonSettings.Converters.Where(converter => !(converter is FPackageIndexJsonConverter)).ToList();
-                converters.Add(paths);
-                pathJsonSettings = new JsonSerializerSettings
+                // the contract's converter goes before the settings' list: the resolver alone replaces how
+                // FPackageIndex is written
+                pathJsonSettings ??= new JsonSerializerSettings
                 {
                     TypeNameHandling = jsonSettings.TypeNameHandling,
                     NullValueHandling = jsonSettings.NullValueHandling,
                     FloatParseHandling = jsonSettings.FloatParseHandling,
                     ReferenceLoopHandling = jsonSettings.ReferenceLoopHandling,
                     MetadataPropertyHandling = jsonSettings.MetadataPropertyHandling,
-                    ContractResolver = new PathContractResolver(paths),
-                    Converters = converters
+                    ContractResolver = new PathContractResolver(new FPackageIndexPathJsonConverter(this)),
+                    Converters = jsonSettings.Converters
                 };
             }
             return JsonConvert.SerializeObject(value, Formatting.None, pathJsonSettings);

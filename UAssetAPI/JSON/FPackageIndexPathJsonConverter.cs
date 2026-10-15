@@ -66,10 +66,7 @@ namespace UAssetAPI.JSON
             return path;
         }
     }
-}
 
-namespace UAssetAPI.JSON
-{
     /// <summary>The contract resolver of UAsset's JSON with FPackageIndex written as a path (the type's own attribute writes the index).</summary>
     internal class PathContractResolver : UAssetContractResolver
     {

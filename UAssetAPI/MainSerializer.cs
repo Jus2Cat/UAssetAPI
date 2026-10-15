@@ -368,15 +368,7 @@ namespace UAssetAPI
                     if (data is StructPropertyData && !reader.Asset.HasUnversionedProperties)
                     {
                         // the struct's bytes are kept raw: said, not swallowed — its value is not known
-                        reader.PropertyProblems?.Add(new FPropertySizeProblem
-                        {
-                            Property = $"{parentName?.ToString() ?? "-"}.{name}",
-                            Type = type.ToString(),
-                            Declared = leng,
-                            Read = leng,
-                            Offset = posBefore - reader.ExportStart,
-                            Reason = $"{ex.GetType().Name}: {ex.Message}",
-                        });
+                        reader.AddPropertyProblem(parentName, name, type, leng, leng, posBefore, $"{ex.GetType().Name}: {ex.Message}");
                         reader.BaseStream.Position = posBefore;
                         data = new RawStructPropertyData(name);
                         data.PropertyTagFlags = propertyTagFlags;
@@ -525,14 +517,7 @@ namespace UAssetAPI
                 long taken = reader.BaseStream.Position - valueStart;
                 if (taken != leng)
                 {
-                    reader.PropertyProblems?.Add(new FPropertySizeProblem
-                    {
-                        Property = $"{parentName?.ToString() ?? "-"}.{name}",
-                        Type = type.ToString(),
-                        Declared = leng,
-                        Read = taken,
-                        Offset = valueStart - reader.ExportStart,
-                    });
+                    reader.AddPropertyProblem(parentName, name, type, leng, taken, valueStart);
                     if (Environment.GetEnvironmentVariable("UASSETAPI_TRACE") == "1")
                         Console.Error.WriteLine($"[trace] !! {name} : {type} read {taken} of {leng} declared bytes");
                     reader.BaseStream.Position = valueStart + leng;

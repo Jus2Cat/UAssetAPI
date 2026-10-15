@@ -240,6 +240,20 @@ public class AssetBinaryReader : UnrealBinaryReader
     public List<FPropertySizeProblem> PropertyProblems;
     public long ExportStart;
 
+    /// <summary>Records a property not read as written (no-op outside an export read).</summary>
+    public void AddPropertyProblem(FName parentName, FName name, FName type, long declared, long read, long valueStart, string reason = null)
+    {
+        PropertyProblems?.Add(new FPropertySizeProblem
+        {
+            Property = $"{parentName?.ToString() ?? "-"}.{name}",
+            Type = type?.ToString(),
+            Declared = declared,
+            Read = read,
+            Offset = valueStart - ExportStart,
+            Reason = reason,
+        });
+    }
+
     public AssetBinaryReader(Stream stream, UAsset asset = null) : base(stream)
     {
         Asset = asset;
