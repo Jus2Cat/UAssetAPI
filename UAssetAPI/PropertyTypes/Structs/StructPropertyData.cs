@@ -181,6 +181,17 @@ public class StructPropertyData : PropertyData<List<PropertyData>>
         {
             ReadOnce(reader, targetEntry.PropertyType, reader.BaseStream.Position, leng1);
         }
+        else if (includeHeader && leng1 < 8 && !reader.Asset.HasUnversionedProperties)
+        {
+            // A tagged list ends with the name None (an FName: 8 bytes), so a value the tag declares shorter than that
+            // is not one: a natively serialized struct this library has no reader for (FGameplayEffectVersion, one
+            // byte, §139). Kept as the declared bytes — the trial read below does not run for 1, the "length unknown"
+            // of tagless callers. Not the tag's HasBinaryOrNativeSerialize: structs with a native serializer that writes
+            // a tagged list carry it too (GameplayEffectModifierMagnitude, NiagaraTypeDefinition, StateTreeReference —
+            // read as raw bytes on 78 of 1744 r7game assets when that flag was tried, 18.10).
+            RawValue = reader.ReadBytes((int)leng1);
+            Value = [];
+        }
         else if (leng1 > 1 && serializationContext == PropertySerializationContext.Normal)
         {
             // A struct this library has no reader for may still be natively serialized by the engine
